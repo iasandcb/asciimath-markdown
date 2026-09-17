@@ -1,0 +1,36 @@
+name: Publish to npm
+
+# Same shape as the release flow for asciimath2: a published GitHub Release
+# is the trigger, and npm trusts this workflow directly over OIDC (trusted
+# publishing), so no token is stored anywhere. `id-token: write` is what
+# gives the job an identity to present - without it the publish is rejected.
+#
+# npm's trusted publishing has to be configured on an *existing* package, so
+# the very first release was published from a laptop; every one after it
+# comes through here.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          # npm's own guidance for release builds - a cached tree is not
+          # what you want to be publishing from.
+          package-manager-cache: false
+
+      # Trusted publishing needs a recent npm; the one bundled with the
+      # runner's Node may predate it.
+      - run: npm install -g npm@latest
+      - run: npm ci
+      - run: npm test
+      - run: npm publish
