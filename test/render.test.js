@@ -141,3 +141,38 @@ test("a missing KaTeX degrades to a math-error span, not a throw", () => {
   assert.match(html, /<span class="math-error">x\^2<\/span>/);
   setKatex({ renderToString: (tex) => `<katex>${tex}</katex>` });
 });
+
+test("renders ~~strikethrough~~", () => {
+  const html = renderMarkdown("This is ~~wrong~~ right.");
+  assert.match(html, /This is <del>wrong<\/del> right\./);
+});
+
+test("renders ==highlight== but not a spaced-out equality", () => {
+  assert.match(renderMarkdown("Read the ==important== part."), /<mark>important<\/mark>/);
+  assert.doesNotMatch(renderMarkdown("if a == b == c"), /<mark>/);
+});
+
+test("strikethrough and highlight work inside table cells and with bold", () => {
+  const html = renderMarkdown("| a |\n|---|\n| ~~x~~ ==**y**== |");
+  assert.match(html, /<del>x<\/del>/);
+  assert.match(html, /<mark><strong>y<\/strong><\/mark>/);
+});
+
+test("renders task lists with read-only checkboxes", () => {
+  const html = renderMarkdown("- [x] Write the press release\n- [ ] Update the website\n- plain item");
+  assert.match(html, /<li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled checked> Write the press release/);
+  assert.match(html, /<li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled> Update the website/);
+  assert.match(html, /<li>plain item/);
+});
+
+test("task markers work in ordered and nested lists, and need a space after", () => {
+  const html = renderMarkdown("1. [X] first\n   - [ ] nested\n2. [x]no-space");
+  assert.match(html, /<ol>\n<li class="task-list-item"><input[^>]*checked> first/);
+  assert.match(html, /<li class="task-list-item"><input[^>]*disabled> nested/);
+  assert.match(html, /<li>\[x\]no-space/);
+});
+
+test("math is never touched by the new inline markers", () => {
+  const html = renderMarkdown("$a == b$ and $~~x~~$");
+  assert.doesNotMatch(html, /<mark>|<del>/);
+});

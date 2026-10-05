@@ -520,6 +520,11 @@ function renderInline(text, dialect) {
     // is never something to find emphasis markers in.
     return pre + park(`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`) + (trailing ? trailing[0] : "");
   });
+  // ~~strikethrough~~ and ==highlight== (the Markdown Guide's extended
+  // syntax). A highlight's markers have to hug their text, so an equality
+  // written out in prose ("a == b") is never mistaken for one.
+  out = out.replace(/~~(?=\S)([^~\n]*?\S)~~/g, "<del>$1</del>");
+  out = out.replace(/==(?=\S)([^=\n]*?\S)==/g, "<mark>$1</mark>");
   // bold
   out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   out = out.replace(/__([^_]+)__/g, "<strong>$1</strong>");
@@ -895,8 +900,18 @@ export function renderMarkdown(source, fallbackDialect = "latex") {
         listStack.push({ indent, type: wantType });
       }
       // Left open (no `</li>` yet) - closed by whichever of the three cases
-      // above applies once the next line is known.
-      html.push(`<li>${renderInline(itemText, dialect)}`);
+      // above applies once the next line is known. A task item ("- [ ] do",
+      // "- [x] done") gets a read-only checkbox in place of its marker; the
+      // classes match GitHub's, so existing task-list CSS applies as-is.
+      const task = itemText.match(/^\[( |x|X)\]\s+(.*)$/);
+      if (task) {
+        const checked = task[1] !== " " ? " checked" : "";
+        html.push(
+          `<li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled${checked}> ${renderInline(task[2], dialect)}`
+        );
+      } else {
+        html.push(`<li>${renderInline(itemText, dialect)}`);
+      }
       i++;
       continue;
     }

@@ -83,7 +83,9 @@ directive in the document wins; `detectMathDirective()` reports it.
 
 Headings, nested lists (by indentation), tables with alignment, block
 quotes, fenced and inline code, images, links, bare URLs, `**bold**` /
-`*italic*`, horizontal rules — and two things a plain Markdown renderer
+`*italic*`, `~~strikethrough~~`, `==highlight==`, task lists (`- [ ]` /
+`- [x]`, as read-only checkboxes with GitHub's `task-list-item` classes),
+horizontal rules — and two things a plain Markdown renderer
 doesn't:
 
 - **Math**, as above: `$...$`, `$$...$$`, `\(...\)`, `\[...\]`, and fenced
