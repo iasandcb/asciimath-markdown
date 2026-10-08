@@ -184,25 +184,68 @@ function renderLatex(source, displayMode) {
   }
 }
 
+// [F(x)]_a^b, the bracket that evaluates a definite integral:
+// asciimath-parser emits \left[ F(x) \right]_{a}^{b}, and \left/\right size
+// the bracket to F(x) alone - next to the display-size integral sign it
+// belongs with, a visibly short bracket. An invisible strut as tall as an
+// integral sign inside the bracket brings it up to that height. Only a
+// square bracket with a sub- or superscript right after it is touched; any
+// other bracket keeps fitting its contents.
+function sizeEvaluationBrackets(tex) {
+  const stack = [];
+  const struts = [];
+  for (const match of tex.matchAll(/\\(left|right)(\\?.)/g)) {
+    if (match[1] === "left") {
+      stack.push(match);
+      continue;
+    }
+    const open = stack.pop();
+    const after = tex.slice(match.index + match[0].length);
+    if (open && open[2] === "[" && match[2] === "]" && /^\s*[_^]/.test(after)) {
+      struts.push(open.index + open[0].length);
+    }
+  }
+  let out = tex;
+  for (const at of struts.sort((a, b) => b - a)) out = `${out.slice(0, at)} \\vphantom{\\int}${out.slice(at)}`;
+  return out;
+}
+
+// AsciiMath2 -> LaTeX the way this package renders it - exported so a host
+// that typesets formulas some other way (scripter draws them into video
+// frames) gets exactly the same LaTeX.
+export function asciiMathToTex(source, { display = false } = {}) {
+  let tex = asciiMath.toTex(source, { display });
+  // asciimath-parser always wraps multi-row output in LaTeX's `aligned`
+  // environment (SPEC.md 2.2). `aligned` is amsmath's *alignment*
+  // environment: a row with no `&` in it becomes one implicit
+  // right-aligned column, so several unrelated equations just stacked
+  // with blank lines (no `&` anywhere) come out right-justified to a
+  // shared edge instead of each centered on its own - which reads as
+  // ragged/off-center, not "centered", even though the block as a whole
+  // is centered on the page. Swap to `gathered` (the same environment
+  // already used for the LaTeX dialect's own multi-row stacking below)
+  // whenever the source has no `&` to align on anywhere - `gathered`
+  // centers each row independently, matching what plain stacked
+  // equations should look like.
+  if (!source.includes("&") && tex.includes("\\begin{aligned}")) {
+    tex = tex.replace(/\\begin\{aligned\}/g, "\\begin{gathered}").replace(/\\end\{aligned\}/g, "\\end{gathered}");
+  }
+  return sizeEvaluationBrackets(tex);
+}
+
+// A whole $$ block's AsciiMath2 -> LaTeX: one row per line (see
+// renderMathBlock below for why).
+export function asciiMathBlockToTex(source) {
+  const rows = source
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  return rows.length ? asciiMathToTex(rows.join("\n\n"), { display: true }) : "";
+}
+
 function renderAsciiMath(source, displayMode) {
   try {
-    let tex = asciiMath.toTex(source, { display: displayMode });
-    // asciimath-parser always wraps multi-row output in LaTeX's `aligned`
-    // environment (SPEC.md 2.2). `aligned` is amsmath's *alignment*
-    // environment: a row with no `&` in it becomes one implicit
-    // right-aligned column, so several unrelated equations just stacked
-    // with blank lines (no `&` anywhere) come out right-justified to a
-    // shared edge instead of each centered on its own - which reads as
-    // ragged/off-center, not "centered", even though the block as a whole
-    // is centered on the page. Swap to `gathered` (the same environment
-    // already used for the LaTeX dialect's own multi-row stacking below)
-    // whenever the source has no `&` to align on anywhere - `gathered`
-    // centers each row independently, matching what plain stacked
-    // equations should look like.
-    if (!source.includes("&") && tex.includes("\\begin{aligned}")) {
-      tex = tex.replace(/\\begin\{aligned\}/g, "\\begin{gathered}").replace(/\\end\{aligned\}/g, "\\end{gathered}");
-    }
-    return renderLatex(tex, displayMode);
+    return renderLatex(asciiMathToTex(source, { display: displayMode }), displayMode);
   } catch (err) {
     return `<span class="math-error">${escapeHtml(source)}</span>`;
   }

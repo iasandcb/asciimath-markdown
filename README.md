@@ -78,6 +78,8 @@ directive in the document wins; `detectMathDirective()` reports it.
 | `convertAsciiMathToLatex(source)` | Rewrites a whole document's AsciiMath2 math spans to LaTeX and switches its directive, leaving code fences and `\(...\)` alone. |
 | `setCustomAsciiMathSymbols(rows)` | Adds `[token, latex]` pairs to the AsciiMath2 symbol table, e.g. `[["span", "\\operatorname{span}"]]`. |
 | `parseCustomSymbolsCsv(text)` | Parses such pairs out of a two-column CSV. |
+| `asciiMathToTex(source, { display })` | One AsciiMath2 formula → the exact LaTeX this package renders, for hosts that typeset it some other way. |
+| `asciiMathBlockToTex(source)` | A whole `$$` block → LaTeX, one row per line. |
 
 ### Spoken Korean math
 
@@ -115,6 +117,8 @@ language model just produced.
 Not a CommonMark implementation and not trying to be: it covers what
 technical notes actually use, in one dependency-free file you can read in an
 afternoon.
+
+An evaluation bracket — `[F(x)]_a^b`, as in `[x^3/3]_0^1` after a definite integral — is drawn as tall as an integral sign, instead of only as tall as `F(x)`.
 
 ## License
 

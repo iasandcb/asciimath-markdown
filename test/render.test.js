@@ -176,3 +176,12 @@ test("math is never touched by the new inline markers", () => {
   const html = renderMarkdown("$a == b$ and $~~x~~$");
   assert.doesNotMatch(html, /<mark>|<del>/);
 });
+
+test("an evaluation bracket [F(x)]_a^b gets an integral-tall strut; other brackets don't", async () => {
+  const { asciiMathToTex, asciiMathBlockToTex } = await import("../src/index.js");
+  assert.match(asciiMathToTex("[ x ^ 2 ] _ 0 ^ 1", { display: true }), /\\left\[ \\vphantom\{\\int\}/);
+  assert.doesNotMatch(asciiMathToTex("[ 1 , 2 ; 3 , 4 ]", { display: true }), /vphantom/);
+  assert.doesNotMatch(asciiMathToTex("( x + 1 ) ^ 2", { display: true }), /vphantom/);
+  // One row per line, centered (gathered) when nothing is aligned.
+  assert.match(asciiMathBlockToTex("x = 1\ny = 2"), /\\begin\{gathered\}/);
+});
