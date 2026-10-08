@@ -131,12 +131,14 @@ function convertHangulRun(run, out) {
 // just after - Korean reads a fraction denominator first ("삼 분의 일" with
 // "분의, {2} / {1}" -> 1 / 3) and puts a bound's particle after it ("영 에서"
 // with "에서, _ {1}" -> _ 0). A chunk is one token, or one bracket group as
-// a whole ("열고 엑스 더하기 일 닫고"); a template's result is a chunk in
-// turn ("영 에서 삼 분의 일 까지" -> _ 0 ^ (1 / 3)). A chunk that wasn't said
-// (yet) is left out.
+// a whole ("열고 엑스 더하기 일 닫고"), together with any sub/superscripts
+// on it ("엑스 승 삼": 삼 분의 엑스 승 삼 -> x ^ 3 / 3, not x / 3 ^ 3); a
+// template's result is a chunk in turn ("영 에서 삼 분의 일 까지" ->
+// _ 0 ^ (1 / 3)). A chunk that wasn't said (yet) is left out.
 const TEMPLATE = /\{[12]\}/;
 const OPENER = /^(\(:?|\[|\{:?|[A-Za-z]+\()$/;
 const CLOSER = /^(\)|\]|\}|:\)|:\})$/;
+const SCRIPT = /^[_^]$/;
 
 // A chunk inside another template: a multi-token one is bracketed so it
 // stays one piece (AsciiMath drops those brackets under _, ^ and /).
@@ -144,9 +146,10 @@ function asChunk(item) {
   return item.composite && item.text.includes(" ") ? `( ${item.text} )` : item.text;
 }
 
-function chunkBefore(done) {
+// One token or bracket group off the end of `done`, or null if there is none.
+function atomBefore(done) {
   const last = done[done.length - 1];
-  if (!last || last.text === "\n" || TEMPLATE.test(last.text)) return "";
+  if (!last || last.text === "\n" || TEMPLATE.test(last.text) || (!last.composite && SCRIPT.test(last.text))) return null;
   if (!CLOSER.test(last.text)) return asChunk(done.pop());
   let depth = 0;
   for (let i = done.length - 1; i >= 0; i--) {
@@ -157,10 +160,27 @@ function chunkBefore(done) {
   return asChunk(done.pop());
 }
 
-// Returns [chunk, index after it].
-function chunkAfter(tokens, at) {
+function chunkBefore(done) {
+  let chunk = atomBefore(done);
+  if (chunk === null) return "";
+  // Take the base it's a sub/superscript of along: x ^ 2, x _ 1 ^ 2.
+  while (done.length >= 2 && !done[done.length - 1].composite && SCRIPT.test(done[done.length - 1].text)) {
+    const script = done.pop();
+    const base = atomBefore(done);
+    if (base === null) {
+      done.push(script);
+      break;
+    }
+    chunk = `${base} ${script.text} ${chunk}`;
+  }
+  return chunk;
+}
+
+// One token or bracket group starting at tokens[at]: [text, index after],
+// or null if there is none.
+function atomAfter(tokens, at) {
   const first = tokens[at];
-  if (first === undefined || first === "\n" || TEMPLATE.test(first)) return ["", at];
+  if (first === undefined || first === "\n" || TEMPLATE.test(first) || SCRIPT.test(first)) return null;
   if (!OPENER.test(first)) return [first, at + 1];
   let depth = 0;
   for (let i = at; i < tokens.length; i++) {
@@ -169,6 +189,20 @@ function chunkAfter(tokens, at) {
     if (depth === 0) return [resolveTemplates(tokens.slice(at, i + 1)), i + 1];
   }
   return [resolveTemplates(tokens.slice(at)), tokens.length];
+}
+
+// Returns [chunk, index after it] - with any sub/superscripts on it.
+function chunkAfter(tokens, at) {
+  const base = atomAfter(tokens, at);
+  if (!base) return ["", at];
+  let [chunk, next] = base;
+  while (SCRIPT.test(tokens[next] || "")) {
+    const script = atomAfter(tokens, next + 1);
+    if (!script) break;
+    chunk = `${chunk} ${tokens[next]} ${script[0]}`;
+    next = script[1];
+  }
+  return [chunk, next];
 }
 
 function resolveTemplates(tokens) {
