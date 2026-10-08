@@ -45,6 +45,10 @@
 // see renderLatex below.
 import { AsciiMath, TokenTypes } from "asciimath-parser";
 
+// Spoken Korean math -> AsciiMath2 (see spoken-math.js) - also importable
+// on its own as "asciimath-markdown/spoken-math".
+export * from "./spoken-math.js";
+
 // `display` is passed per-call to `toTex()` instead (see `renderAsciiMath`/
 // `renderMathBlock` below), so it doesn't matter here.
 //

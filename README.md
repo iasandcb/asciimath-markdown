@@ -79,6 +79,19 @@ directive in the document wins; `detectMathDirective()` reports it.
 | `setCustomAsciiMathSymbols(rows)` | Adds `[token, latex]` pairs to the AsciiMath2 symbol table, e.g. `[["span", "\\operatorname{span}"]]`. |
 | `parseCustomSymbolsCsv(text)` | Parses such pairs out of a two-column CSV. |
 
+### Spoken Korean math
+
+Also importable on its own as `asciimath-markdown/spoken-math`. Turns what a speech recognizer heard while someone read a formula aloud in Korean into AsciiMath2 — the same converter behind dictation in [mark-vector](https://github.com/iasandcb/mark-vector) and the typing videos of [scripter](https://github.com/iasandcb/scripter).
+
+| Export | What it does |
+| --- | --- |
+| `parseSpokenMathCsv(text)` | Parses a vocabulary CSV: one `word, symbol` rule per line (first comma splits, so `과, ,` maps to a comma), `#` comments, later lines win, spaces inside a word ignored. |
+| `setSpokenMathVocabulary(rules)` | Installs that vocabulary. Nothing is built in. |
+| `spokenMathToAsciiMath(text)` | `"엑스 승 이 더하기 라지 에프"` → `"x ^ 2 + F"`. Longest word first; anything not Korean passes through, except lone capitals a recognizer wrote (`F`, `DX`) read as lowercase unless after the capital prefix (`라지`). |
+| `splitMathBlockCommands(text)` | Splits a raw transcript at the words whose symbol is `$$` (e.g. `수식시작`, `수식끝`), which open and close a math block. |
+
+Special symbols: `\n` is a line break inside the formula; `{1}` / `{2}` make a template that takes the chunk said just before / after the word (one token, or one bracket group), for Korean word order — `분의, {2} / {1}` turns "삼 분의 일" into `1 / 3`, `에서, _ {1}` turns "영에서" into `_ 0`.
+
 ## What it renders
 
 Headings, nested lists (by indentation), tables with alignment, block
