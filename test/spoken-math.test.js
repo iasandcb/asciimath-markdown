@@ -6,6 +6,7 @@ import {
   setSpokenMathVocabulary,
   spokenMathToAsciiMath,
   splitMathBlockCommands,
+  findMathBlockCommands,
 } from "../src/spoken-math.js";
 
 const VOCABULARY = `# a comment
@@ -65,4 +66,8 @@ test("templates reorder chunks: fractions, bounds, limits", () => {
 
 test("splits block commands out of a transcript, across spacing", () => {
   assert.deepEqual(splitMathBlockCommands("정리하면 수식 시작 엑스 수식끝 입니다"), ["정리하면 ", " 엑스 ", " 입니다"]);
+});
+
+test("finds block commands with their offsets", () => {
+  assert.deepEqual(findMathBlockCommands("정리하면 수식 시작 엑스 수식끝"), [[5, 10], [14, 17]]);
 });

@@ -82,6 +82,12 @@ export function splitMathBlockCommands(text) {
   return blockCommand ? text.split(blockCommand) : [text];
 }
 
+// Where those commands are: [start, end] character offsets in `text`, for a
+// caller that needs to line them up with something else (word timings).
+export function findMathBlockCommands(text) {
+  return blockCommand ? [...text.matchAll(blockCommand)].map((m) => [m.index, m.index + m[0].length]) : [];
+}
+
 const HANGUL = /[가-힣]/;
 
 // Sentence punctuation a recognizer adds on its own ("엑스 더하기 와이.") -
