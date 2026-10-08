@@ -132,13 +132,18 @@ function convertHangulRun(run, out) {
 // "분의, {2} / {1}" -> 1 / 3) and puts a bound's particle after it ("영 에서"
 // with "에서, _ {1}" -> _ 0). A chunk is one token, or one bracket group as
 // a whole ("열고 엑스 더하기 일 닫고"), together with any sub/superscripts
-// on it ("엑스 승 삼": 삼 분의 엑스 승 삼 -> x ^ 3 / 3, not x / 3 ^ 3); a
+// on it ("엑스 승 삼": 삼 분의 엑스 승 삼 -> x ^ 3 / 3, not x / 3 ^ 3) and,
+// for a function, its argument ("사인 엑스": 엑스 분의 사인 엑스 ->
+// sin x / x); a
 // template's result is a chunk in turn ("영 에서 삼 분의 일 까지" ->
 // _ 0 ^ (1 / 3)). A chunk that wasn't said (yet) is left out.
 const TEMPLATE = /\{[12]\}/;
 const OPENER = /^(\(:?|\[|\{:?|[A-Za-z]+\()$/;
 const CLOSER = /^(\)|\]|\}|:\)|:\})$/;
 const SCRIPT = /^[_^]$/;
+// AsciiMath's function names (f and g aside - as spoken variables they'd
+// swallow whatever follows).
+const FUNCTION = /^(a?(sin|cos|tan|sec|csc|cot)h?|arc(sin|cos|tan)|exp|log|ln|det|dim|gcd|lcm|min|max)$/;
 
 // A chunk inside another template: a multi-token one is bracketed so it
 // stays one piece (AsciiMath drops those brackets under _, ^ and /).
@@ -173,7 +178,37 @@ function chunkBefore(done) {
     }
     chunk = `${base} ${script.text} ${chunk}`;
   }
+  // ... and the function it's the argument of: sin x, cos ^ 2 x, log _ 2 x.
+  const plain = (k) => done[done.length - k] && !done[done.length - k].composite && done[done.length - k].text;
+  for (const length of [5, 3, 1]) {
+    const head = Array.from({ length }, (_, k) => plain(length - k));
+    const scriptsOk = head.every((text, k) => (k % 2 === 1 ? SCRIPT.test(text || "") : k === 0 || (text && !TEMPLATE.test(text))));
+    if (head.every(Boolean) && FUNCTION.test(head[0]) && scriptsOk) {
+      done.splice(done.length - length);
+      return `${head.join(" ")} ${chunk}`;
+    }
+  }
   return chunk;
+}
+
+// Whether `chunk` is already one bracket group from end to end.
+function enclosed(chunk) {
+  const tokens = chunk.split(" ");
+  if (!OPENER.test(tokens[0]) || !CLOSER.test(tokens[tokens.length - 1])) return false;
+  let depth = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    if (OPENER.test(tokens[i])) depth += 1;
+    else if (CLOSER.test(tokens[i])) depth -= 1;
+    if (depth === 0 && i < tokens.length - 1) return false;
+  }
+  return true;
+}
+
+// A chunk of several tokens goes into a template bracketed, so it stays one
+// operand ("sin x" over x is (sin x) / x, not sin (x / x)); AsciiMath drops
+// those brackets under /, _ and ^, so they don't show.
+function operand(chunk) {
+  return chunk.includes(" ") && !enclosed(chunk) ? `( ${chunk} )` : chunk;
 }
 
 // One token or bracket group starting at tokens[at]: [text, index after],
@@ -202,6 +237,11 @@ function chunkAfter(tokens, at) {
     chunk = `${chunk} ${tokens[next]} ${script[0]}`;
     next = script[1];
   }
+  // A function takes its argument along: sin x, sin ^ 2 x, log (x + 1).
+  if (FUNCTION.test(base[0]) && next < tokens.length) {
+    const [argument, after] = chunkAfter(tokens, next);
+    if (argument) [chunk, next] = [`${chunk} ${argument}`, after];
+  }
   return [chunk, next];
 }
 
@@ -220,7 +260,7 @@ function resolveTemplates(tokens) {
       after = chunk;
       i = next - 1;
     }
-    const text = token.replace("{1}", before).replace("{2}", after).replace(/ +/g, " ").trim();
+    const text = token.replace("{1}", operand(before)).replace("{2}", operand(after)).replace(/ +/g, " ").trim();
     if (text) done.push({ text, composite: true });
   }
   return done.map((item) => item.text).join(" ");

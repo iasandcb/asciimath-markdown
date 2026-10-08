@@ -93,7 +93,7 @@ Also importable on its own as `asciimath-markdown/spoken-math`. Turns what a spe
 | `splitMathBlockCommands(text)` | Splits a raw transcript at the words whose symbol is `$$` (e.g. `수식시작`, `수식끝`), which open and close a math block. |
 | `findMathBlockCommands(text)` | The same commands as `[start, end]` character offsets, for lining them up with word timings. |
 
-Special symbols: `\n` is a line break inside the formula; `{1}` / `{2}` make a template that takes the chunk said just before / after the word (one token or one bracket group, with any sub/superscripts on it — "삼 분의 엑스 승 삼" is `x ^ 3 / 3`), for Korean word order — `분의, {2} / {1}` turns "삼 분의 일" into `1 / 3`, `에서, _ {1}` turns "영에서" into `_ 0`.
+Special symbols: `\n` is a line break inside the formula; `{1}` / `{2}` make a template that takes the chunk said just before / after the word (one token or one bracket group, with any sub/superscripts on it and, for a function, its argument — "삼 분의 엑스 승 삼" is `( x ^ 3 ) / 3`, "엑스 분의 사인 엑스" is `( sin x ) / x`; a multi-token chunk is bracketed, which AsciiMath drops under `/`, `_` and `^`), for Korean word order — `분의, {2} / {1}` turns "삼 분의 일" into `1 / 3`, `에서, _ {1}` turns "영에서" into `_ 0`.
 
 ## What it renders
 

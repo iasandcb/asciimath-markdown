@@ -32,6 +32,7 @@ const VOCABULARY = `# a comment
 무한대, oo
 로, -> {1}
 엑스, x
+사인, sin
 `;
 
 setSpokenMathVocabulary(parseSpokenMathCsv(VOCABULARY));
@@ -61,9 +62,12 @@ test("templates reorder chunks: fractions, bounds, limits", () => {
   assert.equal(spokenMathToAsciiMath("적분 영에서 삼 분의 일 까지 엑스"), "int _ 0 ^ ( 1 / 3 ) x");
   assert.equal(spokenMathToAsciiMath("엑스 무한대로"), "x -> oo");
   // A chunk takes its sub/superscripts along, on either side.
-  assert.equal(spokenMathToAsciiMath("삼 분의 엑스 승 삼"), "x ^ 3 / 3");
-  assert.equal(spokenMathToAsciiMath("엑스 승 이 분의 일"), "1 / x ^ 2");
-  assert.equal(spokenMathToAsciiMath("열고 엑스 더하기 일 닫고 승 이 분의 일 더하기 엑스"), "1 / ( x + 1 ) ^ 2 + x");
+  assert.equal(spokenMathToAsciiMath("삼 분의 엑스 승 삼"), "( x ^ 3 ) / 3");
+  assert.equal(spokenMathToAsciiMath("엑스 승 이 분의 일"), "1 / ( x ^ 2 )");
+  assert.equal(spokenMathToAsciiMath("열고 엑스 더하기 일 닫고 승 이 분의 일 더하기 엑스"), "1 / ( ( x + 1 ) ^ 2 ) + x");
+  // A function takes its argument along.
+  assert.equal(spokenMathToAsciiMath("엑스 분의 사인 엑스"), "( sin x ) / x");
+  assert.equal(spokenMathToAsciiMath("사인 승 이 엑스 분의 일"), "1 / ( sin ^ 2 x )");
   // A chunk not said yet is left out.
   assert.equal(spokenMathToAsciiMath("삼 분의"), "/ 3");
 });
